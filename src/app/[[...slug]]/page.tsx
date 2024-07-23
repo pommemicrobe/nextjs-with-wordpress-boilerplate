@@ -1,9 +1,7 @@
 import { Metadata } from 'next';
 
-import { getMenus } from '@/serverActions/menus';
 import { getPage } from '@/serverActions/pages';
 import { getPosts } from '@/serverActions/posts';
-import { getSettings } from '@/serverActions/settings';
 
 type PageProps = {
   params: {
@@ -14,27 +12,43 @@ type PageProps = {
   };
 };
 
-// export const metadata: Metadata = {
-//   title: 'Home page',
-//   description: 'Home page description',
-// };
+const getPageData = async ({ slug, searchParams }: any) => {
+  if (process.env.WORDPRESS_HOMEPAGE_SLUG) {
+    const cleanSlug = !slug?.join('/') ? process.env.WORDPRESS_HOMEPAGE_SLUG : slug.join('/');
+    return getPage({ slug: cleanSlug, searchParams });
+  }
+
+  return null;
+}
 
 export async function generateMetadata({ params: { slug }, searchParams }: PageProps): Promise<Metadata> {
+  const pageData = await getPageData({ slug, searchParams });
+
   return {
-    title: slug?.join('/'),
+    title: pageData?.title?.rendered,
     description: 'Home page description',
   }
 }
 
 export default async function Page({ params: { slug }, searchParams }: PageProps) {
   if (process.env.WORDPRESS_HOMEPAGE_SLUG) {
-    const cleanSlug = !slug?.join('/') ? process.env.WORDPRESS_HOMEPAGE_SLUG : slug.join('/');
-    const pageData = await getPage({ slug: cleanSlug, searchParams });
+    const pageData = await getPageData({ slug, searchParams });
 
     return (
       <>
-        <h1 dangerouslySetInnerHTML={{ __html: pageData.title.rendered }}></h1>
-        <div dangerouslySetInnerHTML={{ __html: pageData.content.rendered }}></div>
+        {
+          pageData?.acf?.blocks.map(async (block: any, index: number) => {
+            try {
+              const BlockComponent = (await import(`@/components/blocks/${block.type}`)).default;
+
+              return (
+                <BlockComponent key={index} data={block[block.type]} />
+              );
+            } catch (error) {
+              console.error(`Block component ${block.type} not found`);
+            }
+          })
+        }
       </>
     );
   }
@@ -44,7 +58,7 @@ export default async function Page({ params: { slug }, searchParams }: PageProps
   return (
     <>
       {
-        postsData.map((post: any) => (
+        postsData?.map((post: any) => (
           <div key={post.id}>
             <h2 dangerouslySetInnerHTML={{ __html: post.title.rendered }}></h2>
             <div dangerouslySetInnerHTML={{ __html: post.content.rendered }}></div>

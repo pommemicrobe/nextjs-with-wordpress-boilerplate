@@ -6,12 +6,9 @@ type GetPageProps = {
 };
 
 const getPage = async ({ slug, searchParams }: GetPageProps) => {
-  const response = await fetch(`${process.env.WORDPRESS_BASE_URL}/wp-json/wp/v2/pages?slug=${slug}`);
-  const page = await response.json();
-
-  console.log('page', page);
-  
-  return page[0];
+  return fetch(`${process.env.WORDPRESS_BASE_URL}/wp-json/wp/v2/pages?slug=${slug}`)
+    .then((response) => response.json())
+    .then((data) => data[0]);
 };
 
 export { getPage };
